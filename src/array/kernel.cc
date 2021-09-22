@@ -563,8 +563,20 @@ DGL_REGISTER_GLOBAL("sparse._CAPI_FG_SDDMMTreeReduction")
 #endif  // USE_TVM
 
 
+
 /**************************************************************************************/
 /* Libra partitioning codebase */
+
+template<typename IdType>
+int32_t Ver2partition(IdType in_val, int32_t* node_map, int32_t num_parts) {
+  int32_t pos = 0;
+  for (int32_t p=0; p<num_parts; p++) {
+    if (in_val < node_map[p])
+      return pos;
+    pos = pos + 1;
+  }
+  LOG(FATAL) << "Error: Unexpected output in Ver2partition!";
+}
 
 /*! \brief Identifies the lead loaded partition/community for a given edge assignment.*/
 int32_t LeastLoad(int64_t* community_edges, int32_t nc) {

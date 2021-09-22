@@ -1,3 +1,19 @@
+## DistGNN vertex-cut based graph partitioning (using Libra)
+
+### How to run graph partitioning
+```python ../../../../python/dgl/distgnn/partition/main_Libra.py <dataset> <#partitions>```
+
+Example: The following command-line creates 4 partitions of pubmed graph   
+```python ../../../../python/dgl/distgnn/partition/main_Libra.py pubmed 4```
+
+The ouptut partitions are created in the current directory in Libra_result_\<dataset\>/ folder.  
+The *upcoming DistGNN* application can directly use these partitions for distributed training.  
+
+### How Libra partitioning works
+Libra is a vertex-cut based graph partitioning method. It applies greedy heuristics to uniquely distribute the input graph edges among the partitions. It generates the partitions as a list of edges. Script ```main_Libra.py```  after getting the Libra partitions converts the Libra output to DGL/DistGNN input format.
+
+
+
 ## Distributed training
 
 This is an example of training GraphSage in a distributed fashion. Before training, please install some python libs by pip:

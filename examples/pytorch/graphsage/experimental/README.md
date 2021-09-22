@@ -5,7 +5,7 @@
 
 Example: The following command-line creates 4 partitions of pubmed graph   
 ```python ../../../../python/dgl/distgnn/partition/main_Libra.py pubmed 4```
-
+ 
 The ouptut partitions are created in the current directory in Libra_result_\<dataset\>/ folder.  
 The *upcoming DistGNN* application can directly use these partitions for distributed training.  
 

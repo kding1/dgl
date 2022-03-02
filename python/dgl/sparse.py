@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from . import ndarray as nd
 from ._ffi.function import _init_api
 from .base import DGLError
+
 from . import backend as F
 
 
@@ -592,5 +593,641 @@ def _csrmask(A, A_weights, B):
         The output weights.
     """
     return F.from_dgl_nd(_CAPI_DGLCSRMask(A, F.to_dgl_nd(A_weights), B))
+
+
+##################################################
+## DistGNN functions
+def deg_div(neigh, h, feat_size, degs, lim):
+    _CAPI_DGLKerneldeg_div_(to_dgl_nd_for_write(neigh),
+                            to_dgl_nd(h),
+                            feat_size,
+                            to_dgl_nd(degs),
+                            lim)
+    
+def deg_div_back(neigh, feat_size, degs, lim):
+    _CAPI_DGLKerneldeg_div_back_(to_dgl_nd_for_write(neigh),
+                                 feat_size,
+                                 to_dgl_nd(degs),
+                                 lim)
+
+def fdrpa_gather_emb_v41(feat, feat_shape, adj, send_feat_list, offset, send_node_list, send_to_node_list, selected_nodes, in_degs, node2part, node2part_index, width, feat_size, cur_part, soffset_base, soffset_cur, node_map, num_parts):
+    sfl = to_dgl_nd_for_write(send_feat_list)
+    feat_ = to_dgl_nd(feat)
+    adj_ =  to_dgl_nd(adj)
+    snl_ = to_dgl_nd_for_write(send_node_list)
+    stnl_ = to_dgl_nd_for_write(send_to_node_list)
+    #selected_nodes_ = to_dgl_nd(th.tensor(selected_nodes, dtype=th.int32))
+    selected_nodes_ = to_dgl_nd(selected_nodes)
+    #node_map_ = to_dgl_nd(th.tensor(node_map, dtype=th.int32))
+    node_map_ = to_dgl_nd(node_map)
+    
+    #tic = time.time()
+    _CAPI_DGLKernelfdrpa_gather_emb_v41_(feat_,
+                                         feat_shape,
+                                         adj_,
+                                         sfl,
+                                         offset,
+                                         snl_,
+                                         stnl_,
+                                         selected_nodes_,
+                                         to_dgl_nd(in_degs),
+                                         to_dgl_nd(node2part),
+                                         to_dgl_nd(node2part_index),
+                                         width,
+                                         feat_size,
+                                         cur_part,
+                                         soffset_base,
+                                         soffset_cur,
+                                         node_map_,
+                                         num_parts)
+    #toc = time.time()
+    #print("Sparse gether41 time: ", toc - tic)
+
+
+def fdrpa_scatter_reduce_v41(otf, offsetf, otn, offsetn, neigh, degs, node_map, dim, feat_size, num_parts, recv_list_nodes, pos, count, cur_part):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelfdrpa_scatter_reduce_v41_(to_dgl_nd(otf),
+                                             offsetf,
+                                             to_dgl_nd(otn),
+                                             offsetn,                                   
+                                             to_dgl_nd_for_write(neigh),
+                                             to_dgl_nd_for_write(degs),
+                                             node_map_,
+                                             dim,
+                                             feat_size,
+                                            num_parts,
+                                             to_dgl_nd_for_write(recv_list_nodes),
+                                             to_dgl_nd_for_write(pos),
+                                             count,
+                                             cur_part)
+
+def fdrpa_gather_emb_v42(feat, feat_shape, send_feat_list, offset, recv_list_nodes, lim, in_degs, feat_size, cur_part, node_map, num_parts):
+    node_map_ = to_dgl_nd(node_map)    
+    _CAPI_DGLKernelfdrpa_gather_emb_v42_(to_dgl_nd(feat),
+                                         feat_shape,
+                                         to_dgl_nd_for_write(send_feat_list),
+                                         offset,
+                                         to_dgl_nd(recv_list_nodes),
+                                         lim,
+                                         to_dgl_nd(in_degs),
+                                         feat_size,
+                                         cur_part,
+                                         node_map_,
+                                         num_parts)
+
+def fdrpa_scatter_reduce_v42(otf, offset, stn, lim, in_degs, neigh, node_map, dim, feat_size, num_parts, cur_part):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelfdrpa_scatter_reduce_v42_(to_dgl_nd(otf),
+                                             offset,
+                                             to_dgl_nd(stn),
+                                             lim,
+                                             to_dgl_nd_for_write(in_degs),
+                                             to_dgl_nd_for_write(neigh),
+                                             node_map_,
+                                             dim,
+                                             feat_size,
+                                             num_parts,
+                                             cur_part)
+
+def fdrpa_get_buckets_v4(adj, selected_nodes, node2part, node2part_index, node_map, buckets, lf, width, num_parts, cur_part):
+    selected_nodes_ =  to_dgl_nd(selected_nodes)
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelfdrpa_get_buckets_v4_(to_dgl_nd(adj),
+                                         selected_nodes_,
+                                         to_dgl_nd_for_write(node2part),
+                                         to_dgl_nd_for_write(node2part_index),
+                                         node_map_,
+                                         to_dgl_nd_for_write(buckets),
+                                         to_dgl_nd(lf),
+                                         width,
+                                         num_parts,
+                                         cur_part)
+
+def fdrpa_init_buckets_v4(adj, selected_nodes, node_map, buckets, lf, width, num_parts, cur_part):
+    selected_nodes_ =  to_dgl_nd(selected_nodes)
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelfdrpa_init_buckets_v4_(to_dgl_nd(adj),
+                                          selected_nodes_,
+                                          node_map_,
+                                          to_dgl_nd_for_write(buckets),
+                                          to_dgl_nd(lf),
+                                          width,
+                                          num_parts,
+                                          cur_part)
+
+
+## backpass
+def bdrpa_gather_emb_v41(feat, feat_shape, adj, send_feat_list, offset, send_node_list, send_to_node_list, selected_nodes, node2part, node2part_index, width, feat_size, cur_part, soffset_base, soffset_cur, node_map, num_parts):
+    sfl = to_dgl_nd_for_write(send_feat_list)
+    feat_ = to_dgl_nd(feat)
+    adj_ =  to_dgl_nd(adj)
+    snl_ = to_dgl_nd_for_write(send_node_list)
+    stnl_ = to_dgl_nd_for_write(send_to_node_list)
+    #selected_nodes_ = to_dgl_nd(th.tensor(selected_nodes, dtype=th.int32))
+    selected_nodes_ = to_dgl_nd(selected_nodes)
+    #node_map_ = to_dgl_nd(th.tensor(node_map, dtype=th.int32))
+    node_map_ = to_dgl_nd(node_map)
+    
+    #tic = time.time()
+    _CAPI_DGLKernelbdrpa_gather_emb_v41_(feat_,
+                                         feat_shape,
+                                         adj_,
+                                         sfl,
+                                         offset,
+                                         snl_,
+                                         stnl_,
+                                         selected_nodes_,
+                                         to_dgl_nd(node2part),
+                                         to_dgl_nd(node2part_index),
+                                         width,
+                                         feat_size,
+                                         cur_part,
+                                         soffset_base,
+                                         soffset_cur,
+                                         node_map_,
+                                         num_parts)
+    #toc = time.time()
+    #print("Sparse gether41 time: ", toc - tic)
+
+
+def bdrpa_scatter_reduce_v41(otf, offsetf, otn, offsetn, neigh, node_map, dim, feat_size, num_parts, recv_list_nodes, pos, count, cur_part):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_scatter_reduce_v41_(to_dgl_nd(otf),
+                                             offsetf,
+                                             to_dgl_nd(otn),
+                                             offsetn,                                   
+                                             to_dgl_nd_for_write(neigh),
+                                             node_map_,
+                                             dim,
+                                             feat_size,
+                                            num_parts,
+                                             to_dgl_nd_for_write(recv_list_nodes),
+                                             to_dgl_nd_for_write(pos),
+                                             count,
+                                             cur_part)
+
+def bdrpa_gather_emb_v42(feat, feat_shape, send_feat_list, offset, recv_list_nodes, lim, feat_size, cur_part, node_map, num_parts):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_gather_emb_v42_(to_dgl_nd(feat),
+                                         feat_shape,
+                                         to_dgl_nd_for_write(send_feat_list),
+                                         offset,
+                                         to_dgl_nd(recv_list_nodes),
+                                         lim,
+                                         feat_size,
+                                         cur_part,
+                                         node_map_,
+                                         num_parts)
+
+def bdrpa_scatter_reduce_v42(otf, offset, stn, lim, neigh, node_map, dim, feat_size, num_parts, cur_part):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_scatter_reduce_v42_(to_dgl_nd(otf),
+                                             offset,
+                                             to_dgl_nd(stn),
+                                             lim,
+                                             to_dgl_nd_for_write(neigh),
+                                             node_map_,
+                                             dim,
+                                             feat_size,
+                                             num_parts,
+                                             cur_part)
+
+
+## added customed version of these routine to support exact computations
+def bdrpa_gather_emb_v51(feat, feat_shape, adj, send_feat_list, offset, send_node_list, send_to_node_list, selected_nodes, node2part, node2part_index, width, feat_size, cur_part, soffset_base, soffset_cur, node_map, num_parts):
+    sfl = to_dgl_nd_for_write(send_feat_list)
+    feat_ = to_dgl_nd(feat)
+    adj_ =  to_dgl_nd(adj)
+    snl_ = to_dgl_nd_for_write(send_node_list)
+    stnl_ = to_dgl_nd_for_write(send_to_node_list)
+    #selected_nodes_ = to_dgl_nd(th.tensor(selected_nodes, dtype=th.int32))
+    selected_nodes_ = to_dgl_nd(selected_nodes)
+    #node_map_ = to_dgl_nd(th.tensor(node_map, dtype=th.int32))
+    node_map_ = to_dgl_nd(node_map)
+    
+    #tic = time.time()
+    _CAPI_DGLKernelbdrpa_gather_emb_v51_(feat_,
+                                         feat_shape,
+                                         adj_,
+                                         sfl,
+                                         offset,
+                                         snl_,
+                                         stnl_,
+                                         selected_nodes_,
+                                         to_dgl_nd(node2part),
+                                         to_dgl_nd(node2part_index),
+                                         width,
+                                         feat_size,
+                                         cur_part,
+                                         soffset_base,
+                                         soffset_cur,
+                                         node_map_,
+                                         num_parts)
+    #toc = time.time()
+    #print("Sparse gether41 time: ", toc - tic)
+
+
+def bdrpa_scatter_reduce_v51(otf, offsetf, otn, offsetn, neigh, node_map, dim, feat_size, num_parts, recv_list_nodes, pos, count, cur_part):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_scatter_reduce_v51_(to_dgl_nd(otf),
+                                             offsetf,
+                                             to_dgl_nd(otn),
+                                             offsetn,                                   
+                                             to_dgl_nd_for_write(neigh),
+                                             node_map_,
+                                             dim,
+                                             feat_size,
+                                            num_parts,
+                                             to_dgl_nd_for_write(recv_list_nodes),
+                                             to_dgl_nd_for_write(pos),
+                                             count,
+                                             cur_part)
+
+def bdrpa_gather_emb_v52(feat, feat_shape, send_feat_list, offset, recv_list_nodes, lim, feat_size, cur_part, node_map, num_parts):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_gather_emb_v52_(to_dgl_nd(feat),
+                                         feat_shape,
+                                         to_dgl_nd_for_write(send_feat_list),
+                                         offset,
+                                         to_dgl_nd(recv_list_nodes),
+                                         lim,
+                                         feat_size,
+                                         cur_part,
+                                         node_map_,
+                                         num_parts)
+
+def bdrpa_scatter_reduce_v52(otf, offset, stn, lim, neigh, node_map, dim, feat_size, num_parts, cur_part):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_scatter_reduce_v52_(to_dgl_nd(otf),
+                                             offset,
+                                             to_dgl_nd(stn),
+                                             lim,
+                                             to_dgl_nd_for_write(neigh),
+                                             node_map_,
+                                             dim,
+                                             feat_size,
+                                             num_parts,
+                                             cur_part)
+    
+def bdrpa_grad_normalize(feat, adj, selected_nodes, feat_size, num_parts, cur_part, width):
+    feat_ = to_dgl_nd(feat)
+    adj_ =  to_dgl_nd(adj)
+    selected_nodes_ = to_dgl_nd(selected_nodes)    
+    _CAPI_DGLKernelbdrpa_grad_normalize_(feat_,
+                                         adj_,
+                                         selected_nodes_,
+                                         feat_size,
+                                         num_parts,
+                                         cur_part,
+                                         width)
+    
+
+## R->L support
+def bdrpa_get_buckets_v6(adj, selected_nodes, sel_nodes, node2part, node2part_index, node_map, buckets, lf, num_sel_nodes, width, num_parts, cur_part):
+    selected_nodes_ =  to_dgl_nd(selected_nodes)
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_get_buckets_v6_(to_dgl_nd(adj),
+                                         selected_nodes_,
+                                         to_dgl_nd_for_write(sel_nodes),
+                                         to_dgl_nd_for_write(node2part),
+                                         to_dgl_nd_for_write(node2part_index),
+                                         node_map_,
+                                         to_dgl_nd_for_write(buckets),
+                                         to_dgl_nd(lf),
+                                         to_dgl_nd_for_write(num_sel_nodes),
+                                         width,
+                                         num_parts,
+                                         cur_part)
+
+def bdrpa_gather_emb_v61(feat, feat_shape, adj, send_feat_list, offset, send_node_list, send_to_node_list, sel_nodes, node2part, node2part_index, num_sel_nodes, width, feat_size, cur_part, soffset_base, soffset_cur, node_map, num_parts):
+    sfl = to_dgl_nd_for_write(send_feat_list)
+    feat_ = to_dgl_nd(feat)
+    adj_ =  to_dgl_nd(adj)
+    snl_ = to_dgl_nd_for_write(send_node_list)
+    stnl_ = to_dgl_nd_for_write(send_to_node_list)
+    #selected_nodes_ = to_dgl_nd(th.tensor(selected_nodes, dtype=th.int32))
+    sel_nodes_ = to_dgl_nd(sel_nodes)
+    #node_map_ = to_dgl_nd(th.tensor(node_map, dtype=th.int32))
+    node_map_ = to_dgl_nd(node_map)
+    
+    #tic = time.time()
+    _CAPI_DGLKernelbdrpa_gather_emb_v61_(feat_,
+                                         feat_shape,
+                                         adj_,
+                                         sfl,
+                                         offset,
+                                         snl_,
+                                         stnl_,
+                                         sel_nodes_,
+                                         to_dgl_nd(node2part),
+                                         to_dgl_nd(node2part_index),
+                                         num_sel_nodes,
+                                         width,
+                                         feat_size,
+                                         cur_part,
+                                         soffset_base,
+                                         soffset_cur,
+                                         node_map_,
+                                         num_parts)
+    #toc = time.time()
+    #print("Sparse gether41 time: ", toc - tic)
+
+def bdrpa_scatter_reduce_v61(otf, offsetf, otn, offsetn, neigh, node_map, dim, feat_size, num_parts, recv_list_nodes, pos, count, cur_part):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_scatter_reduce_v61_(to_dgl_nd(otf),
+                                             offsetf,
+                                             to_dgl_nd(otn),
+                                             offsetn,                                   
+                                             to_dgl_nd_for_write(neigh),
+                                             node_map_,
+                                             dim,
+                                             feat_size,
+                                            num_parts,
+                                             to_dgl_nd_for_write(recv_list_nodes),
+                                             to_dgl_nd_for_write(pos),
+                                             count,
+                                             cur_part)
+def bdrpa_scatter_reduce_v62(otf, offset, stn, lim, neigh, node_map, dim, feat_size, num_parts, cur_part):
+    node_map_ = to_dgl_nd(node_map)
+    _CAPI_DGLKernelbdrpa_scatter_reduce_v62_(to_dgl_nd(otf),
+                                             offset,
+                                             to_dgl_nd(stn),
+                                             lim,
+                                             to_dgl_nd_for_write(neigh),
+                                             node_map_,
+                                             dim,
+                                             feat_size,
+                                             num_parts,
+                                             cur_part)
+
+    
+def drpa_comm_iters(output_sr, input_sr, feat_size, base_chunk_size_fs, num_parts, int_threshold):
+    ret = _CAPI_DGLKerneldrpa_comm_ters(to_dgl_nd(output_sr),
+                                        to_dgl_nd(input_sr),
+                                        feat_size,
+                                        base_chunk_size_fs,
+                                        num_parts,
+                                        int_threshold)
+    return ret
+    
+###################################################################################################
+"""
+def libra_vertex_cut(nc, node_degree, edgenum_unassigned, community_weights, u, v, w, out, N, N_e, dataset):
+    _CAPI_DGLLibra_VC(nc,
+                      to_dgl_nd_for_write(node_degree),
+                      to_dgl_nd_for_write(edgenum_unassigned),
+                      to_dgl_nd_for_write(community_weights),
+                      to_dgl_nd(u),
+                      to_dgl_nd(v),
+                      to_dgl_nd(w),
+                      to_dgl_nd_for_write(out),
+                      N,
+                      N_e,
+                      dataset)
+
+
+def libra2dgl_built_dict(a, b, indices, ldt_key, gdt_key, gdt_value, node_map, offset, nc, c, fsize, hash_nodes, dataset):
+    _CAPI_DGLlibra2dgl_built_dict(to_dgl_nd_for_write(a),
+                                  to_dgl_nd_for_write(b),
+                                  to_dgl_nd_for_write(indices),
+                                  to_dgl_nd_for_write(ldt_key),
+                                  to_dgl_nd_for_write(gdt_key),
+                                  to_dgl_nd_for_write(gdt_value),
+                                  to_dgl_nd_for_write(node_map),
+                                  to_dgl_nd_for_write(offset),
+                                  nc,
+                                  c,
+                                  fsize,
+                                  to_dgl_nd_for_write(hash_nodes),
+                                  dataset)
+
+def libra2dgl_built_adj(feat, gfeat, adj, inner_node, ldt, gdt_key,
+                        gdt_value, node_map, lf, lftensor, num_nodes, nc, c, feat_size,
+                        labels, trainm, testm, valm, glabels, gtrainm, gtestm, gvalm, feat_shape):
+    _CAPI_DGLlibra2dgl_built_adj(to_dgl_nd(feat),
+                                 to_dgl_nd_for_write(gfeat),
+                                 to_dgl_nd_for_write(adj),
+                                 to_dgl_nd_for_write(inner_node),
+                                 to_dgl_nd(ldt),
+                                 to_dgl_nd(gdt_key),
+                                 to_dgl_nd(gdt_value),
+                                 to_dgl_nd(node_map),
+                                 to_dgl_nd_for_write(lf),
+                                 to_dgl_nd(lftensor),                                 
+                                 num_nodes,
+                                 nc,
+                                 c,
+                                 feat_size,
+                                 to_dgl_nd(labels),
+                                 to_dgl_nd(trainm),
+                                 to_dgl_nd(testm),
+                                 to_dgl_nd(valm),
+                                 to_dgl_nd_for_write(glabels),
+                                 to_dgl_nd_for_write(gtrainm),
+                                 to_dgl_nd_for_write(gtestm),
+                                 to_dgl_nd_for_write(gvalm),
+                                 feat_shape
+                                 )
+
+def libra2dgl_built_adj_v2(feat, gfeat, adj, inner_node, ldt, gdt_key,
+                           gdt_value, node_map, lf, lftensor,
+                           num_nodes, nc, c, feat_size):
+    _CAPI_DGLlibra2dgl_built_adj_v2(to_dgl_nd(feat),
+                                    to_dgl_nd_for_write(gfeat),
+                                    to_dgl_nd_for_write(adj),
+                                    to_dgl_nd_for_write(inner_node),
+                                    to_dgl_nd(ldt),
+                                    to_dgl_nd(gdt_key),
+                                    to_dgl_nd(gdt_value),
+                                    to_dgl_nd(node_map),
+                                    to_dgl_nd_for_write(lf),
+                                    to_dgl_nd(lftensor),
+                                    num_nodes,
+                                    nc,
+                                    c,
+                                    feat_size)
+"""
+###################################################################################################
+## Libra Graph Partition
+def libra_vertex_cut(nc, node_degree, edgenum_unassigned,
+                     community_weights, u, v, w, out, N, N_e, dataset):
+    """
+    This function invokes C/C++ code for Libra based graph partitioning.
+    Parameter details are present in dgl/src/array/libra_partition.cc
+    """
+    _CAPI_DGLLibraVertexCut(nc,
+                            to_dgl_nd_for_write(node_degree),
+                            to_dgl_nd_for_write(edgenum_unassigned),
+                            to_dgl_nd_for_write(community_weights),
+                            to_dgl_nd(u),
+                            to_dgl_nd(v),
+                            to_dgl_nd(w),
+                            to_dgl_nd_for_write(out),
+                            N,
+                            N_e,
+                            dataset)
+
+
+def libra2dgl_build_dict(a, b, indices, ldt_key, gdt_key, gdt_value, node_map,
+                         offset, nc, c, fsize, dataset):
+    """
+    This function invokes C/C++ code for pre-processing Libra output.
+    After graph partitioning using Libra, during conversion from Libra output to DGL/DistGNN input,
+    this function creates dictionaries to assign local node ids to the partitioned nodes
+    and also to create a database of the split nodes.
+    Parameter details are present in dgl/src/array/libra_partition.cc
+    """
+    ret = _CAPI_DGLLibra2dglBuildDict(to_dgl_nd_for_write(a),
+                                      to_dgl_nd_for_write(b),
+                                      to_dgl_nd_for_write(indices),
+                                      to_dgl_nd_for_write(ldt_key),
+                                      to_dgl_nd_for_write(gdt_key),
+                                      to_dgl_nd_for_write(gdt_value),
+                                      to_dgl_nd_for_write(node_map),
+                                      to_dgl_nd_for_write(offset),
+                                      nc,
+                                      c,
+                                      fsize,
+                                      dataset)
+    return ret
+
+
+def libra2dgl_build_adjlist(feat, gfeat, adj, inner_node, ldt, gdt_key,
+                            gdt_value, node_map, lr, lrtensor, num_nodes,
+                            nc, c, feat_size, labels, trainm, testm, valm,
+                            glabels, gtrainm, gtestm, gvalm, feat_shape):
+    """
+    This function invokes C/C++ code for pre-processing Libra output.
+    After graph partitioning using Libra, once the local and global dictionaries are built,
+    for each node in each partition, this function copies the split node details from the
+    global dictionary. It also copies features, label, train, test, and validation information
+    for each node from the input graph to the corresponding partitions.
+    Parameter details are present in dgl/src/array/libra_partition.cc
+    """
+    _CAPI_DGLLibra2dglBuildAdjlist(to_dgl_nd(feat),
+                                   to_dgl_nd_for_write(gfeat),
+                                   to_dgl_nd_for_write(adj),
+                                   to_dgl_nd_for_write(inner_node),
+                                   to_dgl_nd(ldt),
+                                   to_dgl_nd(gdt_key),
+                                   to_dgl_nd(gdt_value),
+                                   to_dgl_nd(node_map),
+                                   to_dgl_nd_for_write(lr),
+                                   to_dgl_nd(lrtensor),
+                                   num_nodes,
+                                   nc,
+                                   c,
+                                   feat_size,
+                                   to_dgl_nd(labels),
+                                   to_dgl_nd(trainm),
+                                   to_dgl_nd(testm),
+                                   to_dgl_nd(valm),
+                                   to_dgl_nd_for_write(glabels),
+                                   to_dgl_nd_for_write(gtrainm),
+                                   to_dgl_nd_for_write(gtestm),
+                                   to_dgl_nd_for_write(gvalm),
+                                   feat_shape)
+
+
+
+def libra2dgl_set_lr(gdt_key, gdt_value, lrtensor, nc, Nn):
+    """
+    This function invokes C/C++ code for pre-processing Libra output.
+    To prepare the graph partitions for DistGNN input, this function sets the leaf
+    and root (1-level tree) among the split copies (across different partitions)
+    of a node from input graph.
+    Parameter details are present in dgl/src/array/libra_partition.cc
+    """
+    _CAPI_DGLLibra2dglSetLR(to_dgl_nd(gdt_key),
+                            to_dgl_nd(gdt_value),
+                            to_dgl_nd_for_write(lrtensor),
+                            nc,
+                            Nn)
+
+#### Libra ends############################################
+
+def rootify2(neigh, n, feat_size, root_node):
+    _CAPI_DGLRootify2_(to_dgl_nd_for_write(neigh),
+                       n,
+                       feat_size,
+                       to_dgl_nd(root_node)
+                       )
+    
+    
+def libra2dgl_fix_lf(gdt_key, gdt_value, lftensor, nc, Nn):
+    _CAPI_DGLlibra2dgl_fix_lf(to_dgl_nd(gdt_key),
+                              to_dgl_nd(gdt_value),
+                              to_dgl_nd_for_write(lftensor),
+                              nc,
+                              Nn)
+    
+def pvalidation(ldt, indices, Nn):
+    val = _CAPI_DGLVal(to_dgl_nd(ldt),
+                       to_dgl_nd_for_write(indices),
+                       Nn)
+    return val
+
+def check_string(str):
+    _CAPI_DGLCheck_String(str)
+
+    
+def mfg(gidx, train_mask, split_notrain_nodes_orig_t, mfg_mask_t, num_hops):
+    ret = _CAPI_DGLKernelmfg_(gidx,
+                              to_dgl_nd(train_mask),
+                              to_dgl_nd(split_notrain_nodes_orig_t),
+                              to_dgl_nd_for_write(mfg_mask_t),
+                              num_hops)
+    
+    return ret
+
+
+def mfg3(gidx, train_mask, split_notrain_nodes_orig_t, mfg_mask_t, num_hops):
+    ret = _CAPI_DGLKernelmfg3_(gidx,
+                              to_dgl_nd(train_mask),
+                              to_dgl_nd(split_notrain_nodes_orig_t),
+                              to_dgl_nd_for_write(mfg_mask_t),
+                              num_hops)
+    
+    return ret
+
+def toUndirected(g, u, v):
+    gidx = g._graph
+    ret = _CAPI_DGLtoUndirected(gidx,
+                                to_dgl_nd_for_write(u),
+                                to_dgl_nd_for_write(v))
+    return ret
+
+def extract_mfg(gidx, train_nid, mfg_nodes, num_hops):
+    ret = _CAPI_DGLKernelExtractmfg_(gidx,
+                               to_dgl_nd(train_nid),
+                               to_dgl_nd_for_write(mfg_nodes),
+                               num_hops)
+    
+    return ret
+
+def hopped_mfg(gidx, train_mask, split_nodes, mfg_mask_t, num_hops):
+    ret = _CAPI_DGLKernelhopped_mfg_(gidx,
+                                     to_dgl_nd(train_mask),
+                                     to_dgl_nd(split_nodes),
+                                     to_dgl_nd_for_write(mfg_mask_t),
+                                     num_hops)
+    
+    return ret
+
+def gather_floats(source, index, destination):
+    _CAPI_DGLGatherFloats(to_dgl_nd(source),
+                          to_dgl_nd(index),
+                          to_dgl_nd_for_write(destination))
+
+def scatter_floats(source, index, destination):
+    _CAPI_DGLScatterFloats(to_dgl_nd(source),
+                           to_dgl_nd(index),
+                           to_dgl_nd_for_write(destination))
+
+def broadcast_floats(source, index, destination):
+    _CAPI_DGLBroadcastFloats(to_dgl_nd(source),
+                           to_dgl_nd(index),
+                           to_dgl_nd_for_write(destination))
+    
 
 _init_api("dgl.sparse")

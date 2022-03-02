@@ -76,6 +76,10 @@ class FakeNewsDataset(DGLBuiltinDataset):
         downloaded data or the directory that
         already stores the input data.
         Default: ~/.dgl/
+    transform : callable, optional
+        A transform that takes in a :class:`~dgl.DGLGraph` object and returns
+        a transformed version. The :class:`~dgl.DGLGraph` object will be
+        transformed before every access.
 
     Attributes
     ----------
@@ -113,7 +117,7 @@ class FakeNewsDataset(DGLBuiltinDataset):
         'politifact': 'dataset/FakeNewsPOL.zip'
     }
 
-    def __init__(self, name, feature_name, raw_dir=None):
+    def __init__(self, name, feature_name, raw_dir=None, transform=None):
         assert name in ['gossipcop', 'politifact'], \
             "Only supports 'gossipcop' or 'politifact'."
         url = _get_dgl_url(self.file_urls[name])
@@ -123,7 +127,8 @@ class FakeNewsDataset(DGLBuiltinDataset):
         self.feature_name = feature_name
         super(FakeNewsDataset, self).__init__(name=name,
                                               url=url,
-                                              raw_dir=raw_dir)
+                                              raw_dir=raw_dir,
+                                              transform=transform)
 
     def process(self):
         """process raw data to graph, labels and masks"""
@@ -168,7 +173,7 @@ class FakeNewsDataset(DGLBuiltinDataset):
                               'feature': self.feature,
                               'train_mask': self.train_mask,
                               'val_mask': self.val_mask,
-                              'test_mask': self.train_mask})
+                              'test_mask': self.test_mask})
 
     def has_cache(self):
         """ check whether there are processed data in `self.save_path` """
@@ -213,7 +218,11 @@ class FakeNewsDataset(DGLBuiltinDataset):
         -------
         (:class:`dgl.DGLGraph`, Tensor)
         """
-        return self.graphs[i], self.labels[i]
+        if self._transform is None:
+            g = self.graphs[i]
+        else:
+            g = self._transform(self.graphs[i])
+        return g, self.labels[i]
 
     def __len__(self):
         r"""Number of graphs in the dataset.

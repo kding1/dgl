@@ -9,6 +9,7 @@
 #include <dgl/immutable_graph.h>
 #include <dgl/runtime/container.h>
 #include <dgl/runtime/parallel_for.h>
+#include <dgl/runtime/c_runtime_api.h>
 #include <set>
 
 #include "../c_api_common.h"
@@ -173,6 +174,12 @@ DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroContext")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {
     HeteroGraphRef hg = args[0];
     *rv = hg->Context();
+  });
+
+DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroIsPinned")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+    HeteroGraphRef hg = args[0];
+    *rv = hg->IsPinned();
   });
 
 DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroNumBits")
@@ -466,8 +473,26 @@ DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroCopyTo")
     DLContext ctx;
     ctx.device_type = static_cast<DLDeviceType>(device_type);
     ctx.device_id = device_id;
-    HeteroGraphPtr hg_new = HeteroGraph::CopyTo(hg.sptr(), ctx);
+    DGLStreamHandle stream = nullptr;
+    DGLGetStream(device_type, device_id, &stream);
+    HeteroGraphPtr hg_new = HeteroGraph::CopyTo(hg.sptr(), ctx, stream);
     *rv = HeteroGraphRef(hg_new);
+  });
+
+DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroPinMemory_")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+    HeteroGraphRef hg = args[0];
+    auto hgindex = std::dynamic_pointer_cast<HeteroGraph>(hg.sptr());
+    hgindex->PinMemory_();
+    *rv = hg;
+  });
+
+DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroUnpinMemory_")
+.set_body([] (DGLArgs args, DGLRetValue* rv) {
+    HeteroGraphRef hg = args[0];
+    auto hgindex = std::dynamic_pointer_cast<HeteroGraph>(hg.sptr());
+    hgindex->UnpinMemory_();
+    *rv = hg;
   });
 
 DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroCopyToSharedMem")

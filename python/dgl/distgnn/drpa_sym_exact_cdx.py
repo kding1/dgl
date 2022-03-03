@@ -22,7 +22,7 @@ from ..sparse import bdrpa_get_buckets_v6, bdrpa_gather_emb_v61, bdrpa_scatter_r
 
 
 
-display = True
+display = False
 class gqueue():
     def __init__(self):
         self.queue = []
@@ -151,24 +151,14 @@ bpass_open = 0 ## bpass activates after this value.
 fpass_open = 0 ## fpass activates after this value.
 
 ## DRPA
-def drpa(gobj, rank, num_parts, node_map, nrounds, delay, dist, nlayers, root_node, drpa_backpass,
-         factive, bactive, split_train_nodes, split_notrain_nodes, L):
-    global backpass, fpass_open, bpass_open
-    backpass = drpa_backpass
-    fpass_open = factive
-    bpass_open = bactive
-    if rank == 0:
-        print("backpass: {}, fpass_open: {}, bpass_open: {}".format(backpass, factive, bactive))
-        
-    #d = drpa_master(gobj, rank, num_parts, node_map, nrounds, dist, nlayers)
+def drpa(gobj, rank, num_parts, node_map, nrounds, delay, dist, nlayers, root_node):
     d = drpa_master(gobj._graph, gobj._ntypes, gobj._etypes, gobj._node_frames, gobj._edge_frames)
     d.drpa_init(rank, num_parts, node_map, nrounds, delay, dist, nlayers,
-                root_node, split_train_nodes, split_notrain_nodes, L)
+                root_node)
     return d
 
 class drpa_master(DGLHeteroGraph):
-    def drpa_init(self, rank, num_parts, node_map, nrounds, delay, dist, nlayers, root_node,
-                  split_train_nodes, split_notrain_nodes, L):
+    def drpa_init(self, rank, num_parts, node_map, nrounds, delay, dist, nlayers, root_node):
         #print("In drpa Init....")
         self.rank = rank
         self.num_parts = num_parts
@@ -183,9 +173,6 @@ class drpa_master(DGLHeteroGraph):
         self.gather_q41 = gqueue()
         self.output_sr_ar = []
         self.root_node = root_node
-        self.split_train_nodes = split_train_nodes
-        self.split_notrain_nodes = split_notrain_nodes
-        self.L = L
 
         if self.nrounds == -1: return
         ## Creates buckets based on ndrounds
@@ -193,12 +180,8 @@ class drpa_master(DGLHeteroGraph):
         adj = self.dstdata['adj']
         lf = self.dstdata['lf']
         width = adj.shape[1]
-        #print("width: ", width)
-        ## groups send data according to 'send to rank'
-        ## communicates and fill output_sr_ar for data to be recd.
-        #print("Create bucket v1 activated!!!!!!!!!!!!!!!!")
-        #self.drpa_create_buckets()
-        print("Create bucket v2 activated!!!!!!!!!!!!!!!!")
+
+        #print("Create bucket v2 activated!!!!!!!!!!!!!!!!")
         self.drpa_create_buckets_v2() ## 100% split node comms
         #print("Create bucket v3 activated!!!!!!!!!!!!!!!!")
         #self.drpa_create_buckets_v3() ## 100% train-split train node w/ bucketing in notrain nodes
@@ -394,56 +377,6 @@ class drpa_master(DGLHeteroGraph):
             baux = bpreset(adj, selected_nodes_t, node_map_t, lf, self.num_parts, self.dist, self.rank)
             bpre_aux.append(baux)            
 
-            # input_sr = []
-            # for i in range(0, self.num_parts):
-            #     input_sr.append(torch.tensor([buckets[i]], dtype=torch.int64))
-            # 
-            # output_sr = [torch.zeros(1, dtype=torch.int64) for i in range(0, self.num_parts)]
-            # sync_req = self.dist.all_to_all(output_sr, input_sr, async_op=True)   # make it async
-            # sync_req.wait() ## recv the #nodes communicated
-            # self.output_sr_ar.append(output_sr)  ## output
-
-
-    def drpa_create_buckets(self):
-        inner_nodex = self.ndata['inner_node'].tolist() ##.count(1)
-        n = len(inner_nodex)
-        idx = inner_nodex.count(1)
-
-        if self.nrounds == 0:
-            nrounds_ = 1
-        else:
-            nrounds_ = self.nrounds
-        self.selected_nodes = [ [] for i in range(nrounds_)]  ## #native nodes
-
-        # randomly divide the nodes in 5 rounds for comms
-        total_alien_nodes = inner_nodex.count(0)  ## count split nodes
-        alien_nodes_per_round = int((total_alien_nodes + nrounds_ -1) / nrounds_)
-
-        counter = 0
-        pos = 0
-        r = 0
-        while counter < n:
-            if inner_nodex[counter] == 0:    ##split node
-                self.selected_nodes[r].append(counter)
-                pos += 1
-                if pos % alien_nodes_per_round == 0:
-                    r = r + 1
-
-            counter += 1
-
-        assert pos == n - idx
-        if (counter != len(inner_nodex)):
-            print("counter: ", counter, " ", len(inner_nodex))
-
-        assert counter == len(inner_nodex), "assertion"
-        #if pos == total_alien_nodes:
-        #    print("pos: ", pos, " ", total_alien_nodes)
-        assert pos == total_alien_nodes, "pos alien not matching!!"
-
-        if self.rank == 0:
-            print("Selected nodes in each round: ", flush=True)
-            for i in range(nrounds_):
-                print("round: ", i,  " nodes: ", len(self.selected_nodes[i]), flush=True);
 
 
     def drpa_create_buckets_v2(self):
@@ -486,53 +419,7 @@ class drpa_master(DGLHeteroGraph):
         for i in range(1, nrounds_):
             self.selected_nodes[i] = self.selected_nodes[0]
             
-        if self.rank == 0:
-            print("Selected nodes in each round: ", flush=True)
-            for i in range(nrounds_):
-                print("round: ", i,  " nodes: ", len(self.selected_nodes[i]), flush=True);
-
-    
-    ## for cd-0x each bucket contains all split training nodes and some partitions of non-train nodes
-    def drpa_create_buckets_v3(self):
-        inner_nodex = self.ndata['inner_node'].tolist() ##.count(1)
-        n = len(inner_nodex)
-        idx = inner_nodex.count(1)
-        #assert n-idx == len(self.split_train_nodes) + len(self.split_notrain_nodes)
-        #assert n-idx == self.split_train_nodes.shape[0] + self.split_notrain_nodes.shape[0]
-        if self.nrounds == 0:
-            nrounds_ = 1
-        else:        
-            nrounds_ = self.nrounds
-            
-        self.selected_nodes = [ [] for i in range(nrounds_)]  ## #native nodes
-
-        # randomly divide the nodes in 5 rounds for comms
-        total_alien_nodes = self.split_notrain_nodes.shape[0]  ## changed total split nodes here
-        alien_nodes_per_round = int((total_alien_nodes + nrounds_ - 1) / nrounds_)
-        #print("Non zero rounds: ", total_alien_nodes/alien_nodes_per_round)
-        pos = 0
-        r = 0
-        for i in range(total_alien_nodes):
-            nid = int(self.split_notrain_nodes[i])
-            self.selected_nodes[r].append(nid)
-            pos += 1
-            if pos % alien_nodes_per_round == 0 and i!=total_alien_nodes - 1:
-                r = r + 1
-
-        if r!= nrounds_-1:
-            print("{} {}".format(r, nrounds_ - 1))
-        assert r == nrounds_-1
-        #assert counter == len(inner_nodex), "assertion"
-        #if pos == total_alien_nodes:
-        #    print("pos: ", pos, " ", total_alien_nodes)
-        assert pos == total_alien_nodes, "pos alien not matching!!"
-
-        for i in range(nrounds_):
-            self.selected_nodes[i] = self.selected_nodes[i] + self.split_train_nodes.tolist()
-            
-        if self.rank == 0:
-            print("Total split nodes: {}, train split nodes: {} notrain split nodes: {},, n: {}".
-                  format(n-idx, self.split_train_nodes.shape[0], self.split_notrain_nodes.shape[0], n))
+        if self.rank == 0 and display:
             print("Selected nodes in each round: ", flush=True)
             for i in range(nrounds_):
                 print("round: ", i,  " nodes: ", len(self.selected_nodes[i]), flush=True);
@@ -742,15 +629,6 @@ class drpa_core_FF_BRL(torch.autograd.Function):
                                              out_size_nodes, in_size_nodes,
                                              async_op=True)
                 gfqueue2.push(req2)
-                ## debug
-                #if rank == 0:
-                #    ind = int((send_node_list[7]== 55).nonzero(as_tuple=True)[0])
-                #    print("Epoch: ", epoch, " ind: ", ind, " ", in_size_nodes[6])
-                #    print("to nodeid: ", sten_nodes_[offset - in_size_nodes[7] + ind])
-                #    print("to feat: ")
-                #    for l in range(10):
-                #        print(sten_[(offset - in_size_nodes[7] + ind)*(feat_size+1) + l], end="")
-                #    print()
                     
                 soffset_cur_copy = soffset_cur.copy()
             
@@ -802,16 +680,6 @@ class drpa_core_FF_BRL(torch.autograd.Function):
                 otn = fstorage_comm_feats_async2.pop()
                 out_size_nodes = fstorage_comm_feats_chunk_async2.pop()
                 out_size_nodes_ar.append(out_size_nodes)
-                ## debug
-                #if rank == 7:
-                #    ind = int((otn == 6442093).nonzero(as_tuple=True)[0][0])
-                #    print("Epoch: ", epoch, " ind: ", ind)
-                #    print("got nodeid: ", otn[ind])
-                #    print("got feat: ")
-                #    for l in range(10):
-                #        print(otf[(ind)*(feat_size+1) + l], end="")
-                #    print()
-                ## debug ends
                 
                 recv_list_nodes_ar = []; ilen = 0
                 for l in range(num_parts):
@@ -911,7 +779,7 @@ class drpa_core_FF_BRL(torch.autograd.Function):
                 #if rank == 0:
                 #    print("Selected nodes: ", selected_nodes_t[roundn].shape, flush=True)
 
-        if rank == 0:
+        if rank == 0 and display:
             print(prof, flush=True)
             #print()
 
@@ -1228,15 +1096,8 @@ class drpa_core_FF_BRL(torch.autograd.Function):
         epoch, delay, nrounds_update, nrounds, feat_size, base_chunk_size_fs, \
             num_parts, rank, dist, selected_nodes, epochi, nlayers = ctx.backward_cache
         node_map_t, adj, lftensor = ctx.saved_tensors
-
-        ## debug
-        # if rank == 0:
-        #     print("Before grad 55: ", grad_out[55], flush=True)
-        # if rank == 7:
-        #     print("Before grad 55 on rank 7: ", grad_out[103756], flush=True)
-        ## debug end
         
-        if rank == 0:
+        if rank == 0 and display:
             print(" >>>>>>>>>>>> drpa core FF BRL bck revised...{}".format(epochi), flush=True)        
 
         ticg = time.time()
@@ -1471,7 +1332,7 @@ class drpa_core_FF_BRL(torch.autograd.Function):
             toc = time.time()
             prof.append('Scatter I: {:0.4f}'.format(toc - tic))
             
-        if rank == 0:
+        if rank == 0 and display:
             tocg = time.time()
             print(prof, flush=True)
             print("Remote agg R->L time: {:.4f}".format(tocg - ticg))
@@ -1496,7 +1357,7 @@ class drpa_core_FF_BRL(torch.autograd.Function):
             num_parts, rank, dist, selected_nodes, epochi, nlayers = ctx.backward_cache
         node_map_t, adj, lftensor = ctx.saved_tensors
 
-        if rank == 0:
+        if rank == 0 and display:
             print(" >>>>>>>>>>>> drpa core FF BRL bck revised...{}".format(epochi), flush=True)        
 
         ticg = time.time()
@@ -1744,7 +1605,7 @@ class drpa_core_FF_BRL(torch.autograd.Function):
             num_parts, rank, dist, selected_nodes, epochi, nlayers = ctx.backward_cache
         node_map_t, adj, lftensor = ctx.saved_tensors
 
-        if rank == 0:
+        if rank == 0 and display:
             print(" >>>>>>>>>>>> drpa core FF BRL bck...{}".format(epochi), flush=True)        
 
         int_threshold = pow(2, 31)/4 - 1              ##bytes
@@ -2036,7 +1897,7 @@ class drpa_core_FN_BLR(torch.autograd.Function):
                 output_sr_ar, gather_q41, epochi, nlayers, root_node):
 
         #feat_copy = feat.clone()        
-        if rank == 0:
+        if rank == 0 and display:
             print(" >>>>>>>>>>>> drpa core FN BLR...{}".format(epochi))
             print("drpa_core_last: ", epochi, flush=True)
 
@@ -2077,7 +1938,7 @@ class drpa_core_FN_BLR(torch.autograd.Function):
             num_parts, rank, dist, selected_nodes, epochi, nlayers = ctx.backward_cache
         node_map_t, adj, lftensor, root_node = ctx.saved_tensors
         
-        if rank == 0:
+        if rank == 0 and display:
             print(" >>>>>>>>>>>> drpa core FN BLR bck revised...{}".format(epochi))
         ticg = time.time()
         
@@ -2163,7 +2024,7 @@ class drpa_core_FN_BLR(torch.autograd.Function):
             prof.append('Scatter II: {:0.4f}'.format(toc - tic))
             
         rootify2(grad_out, grad_out.shape[0], grad_out.shape[1], root_node)
-        if rank == 0:
+        if rank == 0 and display:
             tocg = time.time()
             print(prof, flush=True)
             print("Remote agg L->R time: {:.4f}".format(tocg - ticg))
@@ -2183,7 +2044,7 @@ class drpa_core_FN_BLR(torch.autograd.Function):
             num_parts, rank, dist, selected_nodes, epochi, nlayers = ctx.backward_cache
         node_map_t, adj, lftensor, root_node = ctx.saved_tensors
         
-        if rank == 0:
+        if rank == 0  and display:
             print(" >>>>>>>>>>>> drpa core FN BLR bck revised...{}".format(epochi))
         ticg = time.time()
         
@@ -2294,7 +2155,7 @@ class drpa_core_FN_BLR(torch.autograd.Function):
             num_parts, rank, dist, selected_nodes, epochi, nlayers = ctx.backward_cache
         node_map_t, adj, lftensor, root_node = ctx.saved_tensors
         
-        if rank == 0:
+        if rank == 0 and display:
             print(" >>>>>>>>>>>> drpa core FN BLR bck...{}".format(epochi))
 
         int_threshold = pow(2, 31)/4 - 1              ##bytes
@@ -2585,7 +2446,7 @@ class drpa_core_loss_sync(torch.autograd.Function):
                 node_map, num_parts, rank, epoch, dist, in_degs, nrounds,
                 output_sr_ar, gather_q41, epochi, nlayers, flag):
 
-        if rank == 0:
+        if rank == 0 and display:
             print(" >>>>>>>>>>>> loss sync drpa core last fwd...{}".format(epochi))
             print("drpa_core_last: ", epochi, flush=True)
 
@@ -3040,7 +2901,7 @@ def backward(ctx, grad_out):
         lim, num_parts, rank, dist, epochi, nlayers = ctx.backward_cache
 
     node_map_t, adj, root_node = ctx.saved_tensors
-    if rank == 0:
+    if rank == 0 and display:
         print(" >>>>>>>>>>>> drpa core FF BRL bck...{}".format(epochi))
 
     roundn =  epoch % nrounds if nrounds > 0 else 0

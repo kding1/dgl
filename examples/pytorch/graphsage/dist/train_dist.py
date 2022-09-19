@@ -1,3 +1,7 @@
+import torch.nn.parallel
+import torch.distributed as dist
+import oneccl_bindings_for_pytorch
+
 import os
 os.environ['DGLBACKEND']='pytorch'
 from multiprocessing import Process
@@ -260,6 +264,10 @@ def main(args):
     dgl.distributed.initialize(args.ip_config, net_type=args.net_type)
     if not args.standalone:
         print(socket.gethostname(), 'Initializing DGL process group')
+        os.environ['CCL_ATL_TRANSPORT'] = 'mpi'
+        os.environ['RANK'] = str(int(os.environ.get('NODE_RANK')) * int(os.environ.get('PPN')) + args.local_rank)
+        print('MASTER_ADDR = %s, NODE_RANK = %s, RANK = %s, PPN = %s, WORLD_SIZE = %s, PORT = %s'
+                % (os.environ.get('MASTER_ADDR'), os.environ.get('NODE_RANK'), os.environ['RANK'], os.environ.get('PPN'), os.environ.get('WORLD_SIZE'), os.environ.get('MASTER_PORT')), flush=True)
         th.distributed.init_process_group(backend=args.backend)
     print(socket.gethostname(), 'Initializing DistGraph')
     g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)

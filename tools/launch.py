@@ -599,9 +599,11 @@ def submit_jobs(args, udf_command, dry_run=False):
             master_port=master_port
         )
         cmd = wrap_cmd_with_local_envvars(torch_dist_udf_command, client_env_vars)
+        cmd = wrap_cmd_with_local_envvars(cmd, 'MASTER_ADDR=%s NODE_RANK=%s PPN=%d WORLD_SIZE=%d' % (master_addr, node_id, args.num_trainers, args.num_trainers * len(hosts)))
         cmd = wrap_cmd_with_extra_envvars(cmd, args.extra_envs) if len(args.extra_envs) > 0 else cmd
         cmd = 'cd ' + str(args.workspace) + '; ' + cmd
         clients_cmd.append(cmd)
+        print('this is the cmd: %s' % cmd)
         if not dry_run:
             thread_list.append(execute_remote(cmd, state_q, ip, args.ssh_port, username=args.ssh_username))
 
